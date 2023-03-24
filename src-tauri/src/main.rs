@@ -10,8 +10,11 @@ use tauri::{
     CustomMenuItem, GlobalShortcutManager, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu,
 };
 
+static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 fn send_notification(identifier: &str, message: &str) {
-    Notification::new(identifier).body(message).show().unwrap();
+    let count = 1 + COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let body = format!("[{}] {}", count, message);
+    Notification::new(identifier).body(body).show().unwrap();
 }
 
 fn main() {
@@ -51,9 +54,8 @@ fn main() {
                 timer.lock().unwrap().start();
                 let mut shortcut_manager = app.global_shortcut_manager();
 
-                let config = app.config().clone();
                 if !shortcut_manager.is_registered("PageUp").unwrap() {
-                    let identifier = config.tauri.bundle.identifier.clone();
+                    let identifier = app.config().tauri.bundle.identifier.clone();
                     shortcut_manager
                         .register("PageUp", move || {
                             timer.lock().unwrap().stop();
